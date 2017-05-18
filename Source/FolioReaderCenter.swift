@@ -48,7 +48,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 	/// This delegate receives the events from current page
 	open weak var pageDelegate: FolioReaderPageDelegate?
 
-    
+
     /// The current visible page on reader
     open fileprivate(set) var currentPage: FolioReaderPage?
 
@@ -74,30 +74,30 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
     fileprivate var isFirstLoad = true
 	fileprivate var currentWebViewScrollPositions = [Int: CGPoint]()
 	fileprivate var currentOrientation: UIInterfaceOrientation?
-    
+
     // MARK: - Init
-    
+
     init() {
         super.init(nibName: nil, bundle: Bundle.frameworkBundle())
         initialization()
     }
-    
+
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         initialization()
     }
-    
+
     /**
      Common Initialization
      */
     fileprivate func initialization() {
-        
+
         if (readerConfig.hideBars == true) {
             self.pageIndicatorHeight = 0
         }
-        
+
         totalPages = book.spine.spineReferences.count
-        
+
         // Loading indicator
         let style: UIActivityIndicatorViewStyle = isNight(.white, .gray)
         loadingView = UIActivityIndicatorView(activityIndicatorStyle: style)
@@ -105,24 +105,24 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         loadingView.startAnimating()
         view.addSubview(loadingView)
     }
-    
+
     // MARK: - View life cicle
-    
+
     override open func viewDidLoad() {
         super.viewDidLoad()
-        
+
         screenBounds = self.view.frame
         setPageSize(UIApplication.shared.statusBarOrientation)
-        
+
         // Layout
         collectionViewLayout.sectionInset = UIEdgeInsets.zero
         collectionViewLayout.minimumLineSpacing = 0
         collectionViewLayout.minimumInteritemSpacing = 0
         collectionViewLayout.scrollDirection = .direction()
-        
+
         let background = isNight(readerConfig.nightModeBackground, UIColor.white)
         view.backgroundColor = background
-        
+
         // CollectionView
         collectionView = UICollectionView(frame: screenBounds, collectionViewLayout: collectionViewLayout)
         collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -135,7 +135,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         collectionView.decelerationRate = UIScrollViewDecelerationRateFast
 		enableScrollBetweenChapters(scrollEnabled: true)
         view.addSubview(collectionView)
-        
+
         // Activity Indicator
         self.activityIndicator.activityIndicatorViewStyle = .gray
         self.activityIndicator.hidesWhenStopped = true
@@ -143,14 +143,14 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         self.activityIndicator.backgroundColor = UIColor.gray
         self.view.addSubview(self.activityIndicator)
         self.view.bringSubview(toFront: self.activityIndicator)
-        
+
         if #available(iOS 10.0, *) {
             collectionView.isPrefetchingEnabled = false
         }
-        
+
         // Register cell classes
         collectionView!.register(FolioReaderPage.self, forCellWithReuseIdentifier: reuseIdentifier)
-        
+
         // Configure navigation bar and layout
         automaticallyAdjustsScrollViewInsets = false
         extendedLayoutIncludesOpaqueBars = true
@@ -170,10 +170,10 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 			view.addSubview(scrollScrubber.slider)
 		}
     }
-    
+
     override open func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
+
         // Update pages
         pagesForCurrentPage(currentPage)
         pageIndicatorView?.reloadView(updateShadow: true)
@@ -221,7 +221,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         let font = UIFont(name: "Avenir-Light", size: 17)!
         setTranslucentNavigation(color: navBackground, tintColor: tintColor, titleColor: navText, andFont: font)
     }
-    
+
     func configureNavBarButtons() {
 
         // Navbar buttons
@@ -234,9 +234,9 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 
         let menu = UIBarButtonItem(image: closeIcon, style: .plain, target: self, action:#selector(closeReader(_:)))
         let toc = UIBarButtonItem(image: tocIcon, style: .plain, target: self, action:#selector(presentChapterList(_:)))
-        
+
         navigationItem.leftBarButtonItems = [menu, toc]
-        
+
         var rightBarIcons = [UIBarButtonItem]()
 
         if readerConfig.allowSharing {
@@ -246,10 +246,10 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         if book.hasAudio() || readerConfig.enableTTS {
             rightBarIcons.append(UIBarButtonItem(image: audioIcon, style: .plain, target: self, action:#selector(presentPlayerMenu(_:))))
         }
-        
+
         let font = UIBarButtonItem(image: fontIcon, style: .plain, target: self, action: #selector(presentFontsMenu))
         font.width = space
-        
+
         rightBarIcons.append(contentsOf: [font])
         navigationItem.rightBarButtonItems = rightBarIcons
     }
@@ -261,19 +261,19 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         collectionView.reloadData()
         configureNavBarButtons()
         setCollectionViewProgressiveDirection()
-        
+
         if let position = FolioReader.defaults.value(forKey: kBookId) as? NSDictionary,
             let pageNumber = position["pageNumber"] as? Int , pageNumber > 0 {
             changePageWith(page: pageNumber)
             currentPageNumber = pageNumber
             return
         }
-        
+
         currentPageNumber = 1
     }
-    
+
     // MARK: Change page progressive direction
-    
+
     func setCollectionViewProgressiveDirection() {
         if FolioReader.needsRTLChange {
             collectionView.transform = CGAffineTransform(scaleX: -1, y: 1)
@@ -281,7 +281,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
             collectionView.transform = CGAffineTransform.identity
         }
     }
-    
+
     func setPageProgressiveDirection(_ page: FolioReaderPage) {
         if FolioReader.needsRTLChange {
 //            if page.transform.a == -1 { return }
@@ -291,41 +291,41 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         }
     }
 
-    
+
     // MARK: Change layout orientation
-    
+
     func setScrollDirection(_ direction: FolioReaderScrollDirection) {
         guard let currentPage = currentPage else { return }
-        
+
         // Get internal page offset before layout change
         let pageScrollView = currentPage.webView.scrollView
         pageOffsetRate = pageScrollView.contentOffset.forDirection() / pageScrollView.contentSize.forDirection()
-        
+
         // Change layout
         readerConfig.scrollDirection = direction
         collectionViewLayout.scrollDirection = .direction()
         currentPage.setNeedsLayout()
         collectionView.collectionViewLayout.invalidateLayout()
         collectionView.setContentOffset(frameForPage(currentPageNumber).origin, animated: false)
-        
+
         // Page progressive direction
         setCollectionViewProgressiveDirection()
         delay(0.2) { self.setPageProgressiveDirection(currentPage) }
-        
-        
+
+
         /**
          *  This delay is needed because the page will not be ready yet
          *  so the delay wait until layout finished the changes.
          */
         delay(0.1) {
             var pageOffset = pageScrollView.contentSize.forDirection() * self.pageOffsetRate
-            
+
             // Fix the offset for paged scroll
             if readerConfig.scrollDirection == .horizontal {
                 let page = round(pageOffset / pageWidth)
                 pageOffset = page * pageWidth
             }
-            
+
             let pageOffsetPoint = isDirection(CGPoint(x: 0, y: pageOffset), CGPoint(x: pageOffset, y: 0))
             pageScrollView.setContentOffset(pageOffsetPoint, animated: true)
         }
@@ -339,67 +339,67 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 
         let shouldHide = true
         FolioReader.shared.readerContainer.shouldHideStatusBar = shouldHide
-        
+
         UIView.animate(withDuration: 0.25, animations: {
             FolioReader.shared.readerContainer.setNeedsStatusBarAppearanceUpdate()
-            
+
             // Show minutes indicator
 //            self.pageIndicatorView.minutesLabel.alpha = 0
         })
         navigationController?.setNavigationBarHidden(shouldHide, animated: true)
     }
-    
+
     func showBars() {
         configureNavBar()
-        
+
         let shouldHide = false
         FolioReader.shared.readerContainer.shouldHideStatusBar = shouldHide
-        
+
         UIView.animate(withDuration: 0.25, animations: {
             FolioReader.shared.readerContainer.setNeedsStatusBarAppearanceUpdate()
         })
         navigationController?.setNavigationBarHidden(shouldHide, animated: true)
     }
-    
+
     func toggleBars() {
         if readerConfig.shouldHideNavigationOnTap == false { return }
-        
+
         let shouldHide = !navigationController!.isNavigationBarHidden
         if !shouldHide { configureNavBar() }
-        
+
         FolioReader.shared.readerContainer.shouldHideStatusBar = shouldHide
-        
+
         UIView.animate(withDuration: 0.25, animations: {
             FolioReader.shared.readerContainer.setNeedsStatusBarAppearanceUpdate()
-            
+
             // Show minutes indicator
 //            self.pageIndicatorView.minutesLabel.alpha = shouldHide ? 0 : 1
         })
         navigationController?.setNavigationBarHidden(shouldHide, animated: true)
     }
-    
+
     // MARK: UICollectionViewDataSource
-    
+
     open func numberOfSections(in collectionView: UICollectionView) -> Int {
         return 1
     }
-    
+
     open func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return totalPages
     }
-    
+
     open func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath) as! FolioReaderPage
-        
+
         cell.pageNumber = (indexPath as NSIndexPath).row+1
         cell.webView.scrollView.delegate = self
         cell.webView.setupScrollDirection()
         cell.webView.frame = cell.webViewFrame()
         cell.delegate = self
         cell.backgroundColor = UIColor.clear
-        
+
         setPageProgressiveDirection(cell)
-        
+
         // Configure the cell
 		if let resource = book.spine.spineReferences[(indexPath as NSIndexPath).row].resource,
             var html = try? String(contentsOfFile: resource.fullHref, encoding: String.Encoding.utf8) {
@@ -443,12 +443,12 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAtIndexPath indexPath: IndexPath) -> CGSize {
         return CGSize(width: collectionView.frame.width, height: collectionView.frame.height)
     }
-    
+
     // MARK: - Device rotation
-    
+
     override open func willRotate(to toInterfaceOrientation: UIInterfaceOrientation, duration: TimeInterval) {
         guard FolioReader.isReaderReady else { return }
-        
+
         setPageSize(toInterfaceOrientation)
         updateCurrentPage()
 
@@ -497,20 +497,20 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 
 		self.currentOrientation = toInterfaceOrientation
     }
-    
+
     override open func didRotate(from fromInterfaceOrientation: UIInterfaceOrientation) {
         guard FolioReader.isReaderReady else { return }
         guard let currentPage = currentPage else { return }
-        
+
         // Update pages
         pagesForCurrentPage(currentPage)
         currentPage.refreshPageMode()
-        
+
         scrollScrubber?.setSliderVal()
-        
+
         // After rotation fix internal page offset
         var pageOffset = currentPage.webView.scrollView.contentSize.forDirection() * pageOffsetRate
-        
+
         // Fix the offset for paged scroll
         if readerConfig.scrollDirection == .horizontal {
             let page = round(pageOffset / pageWidth)
@@ -520,10 +520,10 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 		let pageOffsetPoint = isDirection(CGPoint(x: 0, y: pageOffset), CGPoint(x: pageOffset, y: 0))
 		currentPage.webView.scrollView.setContentOffset(pageOffsetPoint, animated: true)
     }
-    
+
     override open func willAnimateRotation(to toInterfaceOrientation: UIInterfaceOrientation, duration: TimeInterval) {
         guard FolioReader.isReaderReady else { return }
-        
+
 		self.collectionView.scrollToItem(at: IndexPath(row: currentPageNumber - 1, section: 0), at: UICollectionViewScrollPosition(), animated: false)
         if currentPageNumber+1 >= totalPages {
             UIView.animate(withDuration: duration, animations: {
@@ -531,9 +531,9 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
             })
         }
     }
-    
+
     // MARK: - Page
-    
+
     func setPageSize(_ orientation: UIInterfaceOrientation) {
         if orientation.isPortrait {
             if screenBounds.size.width < screenBounds.size.height {
@@ -553,13 +553,13 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
             }
         }
     }
-    
+
     func updateCurrentPage(_ completion: (() -> Void)? = nil) {
         updateCurrentPage(nil) { () -> Void in
             completion?()
         }
     }
-    
+
     func updateCurrentPage(_ page: FolioReaderPage? = nil, completion: (() -> Void)? = nil) {
         if let page = page {
             currentPage = page
@@ -572,22 +572,22 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
             previousPageNumber = (currentIndexPath as NSIndexPath).row
             currentPageNumber = (currentIndexPath as NSIndexPath).row+1
         }
-        
+
         nextPageNumber = currentPageNumber+1 <= totalPages ? currentPageNumber+1 : currentPageNumber
-        
+
 //        // Set navigation title
 //        if let chapterName = getCurrentChapterName() {
 //            title = chapterName
 //        } else { title = ""}
-        
+
         // Set pages
         guard let currentPage = currentPage else {
             completion?()
             return
         }
-        
+
         scrollScrubber?.setSliderVal()
-        
+
         if let readingTime = currentPage.webView.js("getReadingTime()") {
             pageIndicatorView?.totalMinutes = Int(readingTime)!
         } else {
@@ -599,7 +599,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 
         completion?()
     }
-    
+
     func pagesForCurrentPage(_ page: FolioReaderPage?) {
         guard let page = page else { return }
 
@@ -610,20 +610,20 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 		let webViewPage = pageForOffset(pageOffSet, pageHeight: pageSize!)
         pageIndicatorView?.currentPage = webViewPage
     }
-    
+
     func pageForOffset(_ offset: CGFloat, pageHeight height: CGFloat) -> Int {
         let page = Int(ceil(offset / height))+1
         return page
     }
-    
+
     func getCurrentIndexPath() -> IndexPath {
         let indexPaths = collectionView.indexPathsForVisibleItems
         var indexPath = IndexPath()
-        
+
         if indexPaths.count > 1 {
             let first = indexPaths.first! as IndexPath
             let last = indexPaths.last! as IndexPath
-            
+
             switch pageScrollDirection {
             case .up:
                 if (first as NSIndexPath).compare(last) == .orderedAscending {
@@ -641,18 +641,18 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         } else {
             indexPath = indexPaths.first ?? IndexPath(row: 0, section: 0)
         }
-        
+
         return indexPath
     }
-    
+
     func frameForPage(_ page: Int) -> CGRect {
         return isDirection(
             CGRect(x: 0, y: pageHeight * CGFloat(page-1), width: pageWidth, height: pageHeight),
             CGRect(x: pageWidth * CGFloat(page-1), y: 0, width: pageWidth, height: pageHeight)
         )
     }
-    
-    func changePageWith(page: Int, andFragment fragment: String, animated: Bool = false, completion: (() -> Void)? = nil) {
+
+    open func changePageWith(page: Int, andFragment fragment: String, animated: Bool = false, completion: (() -> Void)? = nil) {
         if currentPageNumber == page {
             if let currentPage = currentPage , fragment != "" {
                 currentPage.handleAnchor(fragment, avoidBeginningAnchors: true, animated: animated)
@@ -667,7 +667,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
             })
         }
     }
-    
+
 	func changePageWith(href: String, animated: Bool = false, completion: (() -> Void)? = nil) {
         let item = findPageByHref(href)
         let indexPath = IndexPath(row: item, section: 0)
@@ -702,7 +702,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
             completion?()
             return
         }
-        
+
         UIView.animate(withDuration: animated ? 0.3 : 0, delay: 0, options: UIViewAnimationOptions(), animations: { () -> Void in
             self.collectionView.scrollToItem(at: indexPath, at: .direction(), animated: false)
         }) { (finished: Bool) -> Void in
@@ -714,16 +714,16 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         let section = (indexPath as NSIndexPath).section
         let row = (indexPath as NSIndexPath).row
         let lastSectionIndex = numberOfSections(in: collectionView) - 1
-        
+
         //Make sure the specified section exists
         if section > lastSectionIndex {
             return false
         }
-        
+
         let rowCount = self.collectionView(collectionView, numberOfItemsInSection: (indexPath as NSIndexPath).section) - 1
         return row <= rowCount
     }
-    
+
     func isLastPage() -> Bool{
         return currentPageNumber == nextPageNumber
     }
@@ -733,7 +733,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
             completion?()
         }
     }
-    
+
     func changePageToPrevious(_ completion: (() -> Void)? = nil) {
         changePageWith(page: previousPageNumber, animated: true) { () -> Void in
             completion?()
@@ -753,7 +753,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         }
         return count
     }
-    
+
     /**
      Find a page by href.
     */
@@ -767,7 +767,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         }
         return count
     }
-    
+
     /**
      Find and return the current chapter resource.
     */
@@ -805,7 +805,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 
 	/**
      Changes the current page of the reader.
-	
+
      - parameter page: The target page index. Note: The page index starts at 1 (and not 0).
      - parameter animated: En-/Disables the animation of the page change.
      - parameter completion: A Closure which is called if the page change is completed.
@@ -820,7 +820,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 			})
 		}
 	}
-    
+
     // MARK: - Audio Playing
 
     func audioMark(href: String, fragmentID: String) {
@@ -828,13 +828,13 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
     }
 
     // MARK: - Sharing
-    
+
     /**
      Sharing chapter method.
      */
     func shareChapter(_ sender: UIBarButtonItem) {
         guard let currentPage = currentPage else { return }
-        
+
         if let chapterText = currentPage.webView.js("getBodyText()") {
             let htmlText = chapterText.replacingOccurrences(of: "[\\n\\r]+", with: "<br />", options: .regularExpression)
             var subject = readerConfig.localizedShareChapterSubject
@@ -844,53 +844,53 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
             var chapterName = ""
             var authorName = ""
             var shareItems = [AnyObject]()
-            
+
             // Get book title
             if let title = book.title() {
                 bookTitle = title
                 subject += " “\(title)”"
             }
-            
+
             // Get chapter name
             if let chapter = getCurrentChapterName() {
                 chapterName = chapter
             }
-            
+
             // Get author name
             if let author = book.metadata.creators.first {
                 authorName = author.name
             }
-            
+
             // Sharing html and text
             html = "<html><body>"
             html += "<br /><hr> <p>\(htmlText)</p> <hr><br />"
             html += "<center><p style=\"color:gray\">"+readerConfig.localizedShareAllExcerptsFrom+"</p>"
             html += "<b>\(bookTitle)</b><br />"
             html += readerConfig.localizedShareBy+" <i>\(authorName)</i><br />"
-            
+
             if let bookShareLink = readerConfig.localizedShareWebLink {
                 html += "<a href=\"\(bookShareLink.absoluteString)\">\(bookShareLink.absoluteString)</a>"
                 shareItems.append(bookShareLink as AnyObject)
             }
-            
+
             html += "</center></body></html>"
             text = "\(chapterName)\n\n“\(chapterText)” \n\n\(bookTitle) \n\(readerConfig.localizedShareBy) \(authorName)"
-            
+
             let act = FolioReaderSharingProvider(subject: subject, text: text, html: html)
             shareItems.insert(contentsOf: [act, "" as AnyObject], at: 0)
-            
+
             let activityViewController = UIActivityViewController(activityItems: shareItems, applicationActivities: nil)
             activityViewController.excludedActivityTypes = [UIActivityType.print, UIActivityType.postToVimeo]
-            
+
             // Pop style on iPad
             if let actv = activityViewController.popoverPresentationController {
                 actv.barButtonItem = sender
             }
-            
+
             present(activityViewController, animated: true, completion: nil)
         }
     }
-    
+
     /**
      Sharing highlight method.
      */
@@ -902,23 +902,23 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         var chapterName = ""
         var authorName = ""
         var shareItems = [AnyObject]()
-        
+
         // Get book title
         if let title = book.title() {
             bookTitle = title
             subject += " “\(title)”"
         }
-        
+
         // Get chapter name
         if let chapter = getCurrentChapterName() {
             chapterName = chapter
         }
-        
+
         // Get author name
         if let author = book.metadata.creators.first {
             authorName = author.name
         }
-        
+
         // Sharing html and text
         html = "<html><body>"
         html += "<br /><hr> <p>\(chapterName)</p>"
@@ -926,58 +926,58 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         html += "<center><p style=\"color:gray\">"+readerConfig.localizedShareAllExcerptsFrom+"</p>"
         html += "<b>\(bookTitle)</b><br />"
         html += readerConfig.localizedShareBy+" <i>\(authorName)</i><br />"
-        
+
         if let bookShareLink = readerConfig.localizedShareWebLink {
             html += "<a href=\"\(bookShareLink.absoluteString)\">\(bookShareLink.absoluteString)</a>"
             shareItems.append(bookShareLink as AnyObject)
         }
-        
+
         html += "</center></body></html>"
         text = "\(chapterName)\n\n“\(string)” \n\n\(bookTitle) \n\(readerConfig.localizedShareBy) \(authorName)"
-        
+
         let act = FolioReaderSharingProvider(subject: subject, text: text, html: html)
         shareItems.insert(contentsOf: [act, "" as AnyObject], at: 0)
-        
+
         let activityViewController = UIActivityViewController(activityItems: shareItems, applicationActivities: nil)
         activityViewController.excludedActivityTypes = [UIActivityType.print, UIActivityType.postToVimeo]
-        
+
         // Pop style on iPad
         if let actv = activityViewController.popoverPresentationController {
             actv.sourceView = currentPage
             actv.sourceRect = rect
         }
-        
+
         present(activityViewController, animated: true, completion: nil)
     }
-    
+
     // MARK: - ScrollView Delegate
-    
+
     open func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         isScrolling = true
         clearRecentlyScrolled()
         recentlyScrolled = true
         pointNow = scrollView.contentOffset
-        
+
         if let currentPage = currentPage {
             currentPage.webView.createMenu(options: true)
             currentPage.webView.setMenuVisible(false)
         }
-        
+
         scrollScrubber?.scrollViewWillBeginDragging(scrollView)
     }
-    
+
     open func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        
+
         if !navigationController!.isNavigationBarHidden {
             toggleBars()
         }
-        
+
         scrollScrubber?.scrollViewDidScroll(scrollView)
-        
+
         // Update current reading page
         if scrollView is UICollectionView {} else {
             let pageSize = isDirection(pageHeight, pageWidth)
-            
+
             if let page = currentPage
                 , page.webView.scrollView.contentOffset.forDirection()+pageSize! <= page.webView.scrollView.contentSize.forDirection() {
 
@@ -1000,10 +1000,10 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
                 }
             }
         }
-        
+
         pageScrollDirection = scrollView.contentOffset.forDirection() < pointNow.forDirection() ? .negative() : .positive()
     }
-    
+
     open func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         isScrolling = false
 
@@ -1016,10 +1016,10 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         if scrollView is UICollectionView {
             if totalPages > 0 { updateCurrentPage() }
         }
-        
+
         scrollScrubber?.scrollViewDidEndDecelerating(scrollView)
     }
-    
+
     open func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         recentlyScrolledTimer = Timer(timeInterval:recentlyScrolledDelay, target: self, selector: #selector(FolioReaderCenter.clearRecentlyScrolled), userInfo: nil, repeats: false)
         RunLoop.current.add(recentlyScrolledTimer, forMode: RunLoopMode.commonModes)
@@ -1036,41 +1036,41 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
     open func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
         scrollScrubber?.scrollViewDidEndScrollingAnimation(scrollView)
     }
-    
-    
+
+
     // MARK: NavigationBar Actions
-    
+
     func closeReader(_ sender: UIBarButtonItem) {
         dismiss()
         FolioReader.close()
     }
-    
+
     /**
      Present chapter list
      */
     func presentChapterList(_ sender: UIBarButtonItem) {
         FolioReader.saveReaderState()
-        
+
         let chapter = FolioReaderChapterList()
         chapter.delegate = self
         let highlight = FolioReaderHighlightList()
-        
+
         let pageController = PageViewController(transitionStyle: .scroll, navigationOrientation: .horizontal, options:nil)
         pageController.viewControllerOne = chapter
         pageController.viewControllerTwo = highlight
         pageController.segmentedControlItems = [readerConfig.localizedContentsTitle, readerConfig.localizedHighlightsTitle]
-        
+
         let nav = UINavigationController(rootViewController: pageController)
         present(nav, animated: true, completion: nil)
     }
-    
+
     /**
      Present fonts and settings menu
      */
     func presentFontsMenu() {
         FolioReader.saveReaderState()
         hideBars()
-        
+
         let menu = FolioReaderFontsMenu()
         menu.modalPresentationStyle = .custom
 
@@ -1107,7 +1107,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         menu.transitioningDelegate = animator
         present(menu, animated: true, completion: nil)
     }
-    
+
     /**
      Present Quote Share
      */
@@ -1118,7 +1118,7 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
         if isPad {
             nav.modalPresentationStyle = .formSheet
         }
-        
+
         present(nav, animated: true, completion: nil)
     }
 }
@@ -1126,9 +1126,9 @@ open class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UIColl
 // MARK: FolioPageDelegate
 
 extension FolioReaderCenter: FolioReaderPageDelegate {
-    
+
     public func pageDidLoad(_ page: FolioReaderPage) {
-        
+
         if let position = FolioReader.defaults.value(forKey: kBookId) as? NSDictionary {
             let pageNumber = position["pageNumber"]! as! Int
 			let offset = isDirection(position["pageOffsetY"], position["pageOffsetX"]) as? CGFloat
@@ -1137,7 +1137,7 @@ extension FolioReaderCenter: FolioReaderPageDelegate {
             if isFirstLoad {
                 updateCurrentPage(page)
                 isFirstLoad = false
-                
+
                 if currentPageNumber == pageNumber && pageOffset > 0 {
                     page.scrollPageToOffset(pageOffset!, animated: false)
                 }
@@ -1148,7 +1148,7 @@ extension FolioReaderCenter: FolioReaderPageDelegate {
             updateCurrentPage(page)
             isFirstLoad = false
         }
-        
+
         // Go to fragment if needed
         if let fragmentID = tempFragment, let currentPage = currentPage , fragmentID != "" {
             currentPage.handleAnchor(fragmentID, avoidBeginningAnchors: true, animated: true)
@@ -1176,7 +1176,7 @@ extension FolioReaderCenter: FolioReaderChapterListDelegate {
 
     func chapterList(_ chapterList: FolioReaderChapterList, didSelectRowAtIndexPath indexPath: IndexPath, withTocReference reference: FRTocReference) {
         let item = findPageByResource(reference)
-        
+
         if item < totalPages {
             let indexPath = IndexPath(row: item, section: 0)
             changePageWith(indexPath: indexPath, animated: false, completion: { () -> Void in
@@ -1187,10 +1187,10 @@ extension FolioReaderCenter: FolioReaderChapterListDelegate {
             print("Failed to load book because the requested resource is missing.")
         }
     }
-    
+
     func chapterList(didDismissedChapterList chapterList: FolioReaderChapterList) {
         updateCurrentPage()
-        
+
         // Move to #fragment
         if let reference = tempReference {
             if let fragmentID = reference.fragmentID, let currentPage = currentPage , fragmentID != "" {
