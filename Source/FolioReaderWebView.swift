@@ -8,7 +8,7 @@
 
 import UIKit
 
-/// The custom WebView used in each page 
+/// The custom WebView used in each page
 open class FolioReaderWebView: UIWebView {
 	var isColors = false
 	var isShare = false
@@ -20,7 +20,7 @@ open class FolioReaderWebView: UIWebView {
 		guard readerConfig != nil && readerConfig.useReaderMenuController == true else {
 			return super.canPerformAction(action, withSender: sender)
 		}
-        
+
 		if isShare {
 			return false
 		} else if isColors {
@@ -80,7 +80,7 @@ open class FolioReaderWebView: UIWebView {
             alert.sourceView = FolioReader.shared.readerCenter?.currentPage
             alert.sourceRect = sender.menuFrame
         }
-        
+
 		FolioReader.shared.readerCenter?.present(alertController, animated: true, completion: nil)
 	}
 
@@ -120,7 +120,7 @@ open class FolioReaderWebView: UIWebView {
 			if let highlight = Highlight.matchHighlight(html, andId: dic["id"]!, startOffset: startOffset, endOffset: endOffset) {
 				highlight.persist()
 			}
-            
+
 		} catch {
 			print("Could not receive JSON")
 		}
@@ -191,7 +191,7 @@ open class FolioReaderWebView: UIWebView {
 		let underline = UIImage(readerImageNamed: "underline-marker")
 
         let menuController = UIMenuController.shared
-        
+
 		let highlightItem = UIMenuItem(title: readerConfig.localizedHighlightMenu, action: #selector(highlight(_:)))
 		let playAudioItem = UIMenuItem(title: readerConfig.localizedPlayMenu, action: #selector(play(_:)))
 		let defineItem = UIMenuItem(title: readerConfig.localizedDefineMenu, action: #selector(define(_:)))
@@ -219,9 +219,9 @@ open class FolioReaderWebView: UIWebView {
         let underlineItem = UIMenuItem(title: "U", image: underline) { [weak self] _ in
             self?.setUnderline(menuController)
         }
-        
+
         var menuItems = [shareItem]
-        
+
         // menu on existing highlight
         if isShare {
             menuItems = [colorsItem, removeItem]
@@ -233,17 +233,19 @@ open class FolioReaderWebView: UIWebView {
             menuItems = [yellowItem, greenItem, blueItem, pinkItem, underlineItem]
         } else {
             // default menu
-            menuItems = [highlightItem, defineItem, shareItem]
-            
+						menuItems = [defineItem, shareItem]
+            if readerConfig.allowHighlighting {
+                menuItems.insert(highlightItem, at: 0)
+            }
             if book.hasAudio() || readerConfig.enableTTS {
                 menuItems.insert(playAudioItem, at: 0)
             }
-            
+
             if !readerConfig.allowSharing {
                 menuItems.removeLast()
             }
         }
-        
+
         menuController.menuItems = menuItems
 	}
 
