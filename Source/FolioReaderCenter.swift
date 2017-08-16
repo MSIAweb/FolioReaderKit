@@ -1139,13 +1139,22 @@ extension FolioReaderCenter: FolioReaderPageDelegate {
                 isFirstLoad = false
 
                 if currentPageNumber == pageNumber && pageOffset > 0 {
-                    page.scrollPageToOffset(pageOffset!, animated: false)
+										// the following delay added by rjo to deal with the fact that scrolling to the content offset seems to
+										// fail due to delay in webkit rendering the content in time
+										delay(0.1) {
+											page.scrollPageToOffset(pageOffset!, animated: false)
+										}
                 }
             } else if !isScrolling && FolioReader.needsRTLChange {
                 page.scrollPageToBottom()
             }
         } else if isFirstLoad {
             updateCurrentPage(page)
+						// following line added by rjo to force books that have not been seen before to the top to overcome the
+						// the mysterious phenomenon of books opening at the bottom when previously a book had been scrolled to the
+						// bottom. webkit is persisting something that i cannot identify but this overcomes it. i hate that i cannot
+						// find the source of the issue though.
+						page.scrollPageToTop()
             isFirstLoad = false
         }
 
