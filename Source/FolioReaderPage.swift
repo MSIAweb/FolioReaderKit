@@ -168,7 +168,11 @@ open class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRe
         let direction: ScrollDirection = FolioReader.needsRTLChange ? .positive() : .negative()
 
         if pageScrollDirection == direction && readerConfig.scrollDirection != .horizontalWithVerticalContent {
-            scrollPageToBottom()
+            //rjo
+            // this seems to be the culprit behind the scrolling problem. not exactly sure you how the readconfig.scrollDirection is 
+            // changing but there is never any circumstance in our usage that should cause us to scroll to the bottom after loading
+            // we only scroll to offsets as indicated in the user defaults
+            //scrollPageToBottom()
         }
 
         UIView.animate(withDuration: 0.2, animations: {webView.alpha = 1}, completion: { finished in
@@ -389,17 +393,6 @@ open class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRe
 		}
 	}
 
-	/**
-	Scrolls the page to bottom
-	added by rjo
-	*/
-
-  open func scrollPageToTop() {
-      DispatchQueue.main.async(execute: {
-          self.webView.scrollView.setContentOffset(CGPoint(x:0.0,y:0.0), animated: false)
-      })
-
-  }
 
 	/**
 	Handdle #anchors in html, get the offset and scroll to it
