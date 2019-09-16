@@ -23,23 +23,19 @@ class FolioReaderSharingProvider: UIActivityItemProvider {
         super.init(placeholderItem: "")
     }
 
-    override func activityViewController(_ activityViewController: UIActivityViewController, subjectForActivityType activityType: UIActivityType?) -> String {
+    override func activityViewController(_ activityViewController: UIActivityViewController, subjectForActivityType activityType: UIActivity.ActivityType?) -> String {
         return subject
     }
-
-    override func activityViewController(_ activityViewController: UIActivityViewController, itemForActivityType activityType: UIActivityType) -> Any? {
-        if let html = html , activityType == UIActivityType.mail {
+    
+    override func activityViewController(_ activityViewController: UIActivityViewController, itemForActivityType activityType: UIActivity.ActivityType?) -> Any? {
+        if let html = html , activityType == UIActivity.ActivityType.mail {
             return html
         }
-        
-        if let image = image , activityType == UIActivityType.postToFacebook {
+
+        if let image = image , activityType == UIActivity.ActivityType.postToFacebook {
             return image
         }
 
         return text
     }
-    
-//    func activityViewController(activityViewController: UIActivityViewController, thumbnailImageForActivityType activityType: String?, suggestedSize size: CGSize) -> UIImage? {
-//
-//    }
 }

@@ -11,6 +11,7 @@ import AVFoundation
 import MediaPlayer
 
 open class FolioReaderAudioPlayer: NSObject {
+
     var isTextToSpeech = false
     var synthesizer: AVSpeechSynthesizer!
     var playing = false
@@ -25,25 +26,51 @@ open class FolioReaderAudioPlayer: NSObject {
     var registeredCommands = false
     var completionHandler: () -> Void = {}
     var utteranceRate: Float = 0
-    
+
+    fileprivate var book: FRBook
+    fileprivate var folioReader: FolioReader
+
     // MARK: Init
-    
-    override init() {
+
+    init(withFolioReader folioReader: FolioReader, book: FRBook) {
+        self.book = book
+        self.folioReader = folioReader
+
         super.init()
+
         UIApplication.shared.beginReceivingRemoteControlEvents()
-        
+
         // this is needed to the audio can play even when the "silent/vibrate" toggle is on
-        let session:AVAudioSession = AVAudioSession.sharedInstance()
-        try! session.setCategory(AVAudioSessionCategoryPlayback)
-        try! session.setActive(true)
+        // Fix for AVudioSession https://stackoverflow.com/questions/51010390/avaudiosession-setcategory-swift-4-2-ios-12-play-sound-on-silent
         
-        updateNowPlayingInfo()
+        let session = AVAudioSession.sharedInstance()
+        do {
+            if #available(iOS 10.0, *) {
+                try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            } else {
+                // Fallback on earlier versions
+//                Workaround until https://forums.swift.org/t/using-methods-marked-unavailable-in-swift-4-2/14949 isn't fixed
+                AVAudioSession.sharedInstance().perform(NSSelectorFromString("setCategory:error:"), with: AVAudioSession.Category.playback)
+            }
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print(error)
+        }
+//        try? session.setCategory(convertFromAVAudioSessionCategory(AVAudioSession.Category.playback))
+
+        NotificationCenter.default.addObserver(self,
+            selector: #selector(pause),
+            name: AVAudioSession.interruptionNotification,
+            object: session
+        )
+
+        self.updateNowPlayingInfo()
     }
-    
+
     deinit {
         UIApplication.shared.endReceivingRemoteControlEvents()
     }
-    
+
     // MARK: Reading speed
 
     func setRate(_ rate: Int) {
@@ -64,7 +91,7 @@ open class FolioReaderAudioPlayer: NSObject {
             default:
                 break
             }
-            
+
             updateNowPlayingInfo()
         }
         if synthesizer != nil {
@@ -105,62 +132,56 @@ open class FolioReaderAudioPlayer: NSObject {
                     break
                 }
             }
-            
+
             updateNowPlayingInfo()
         }
     }
-    
+
     // MARK: Play, Pause, Stop controls
 
     func stop(immediate: Bool = false) {
         playing = false
-		if !isTextToSpeech {
+        if !isTextToSpeech {
             if let player = player , player.isPlaying {
-				player.stop()
-			}
-		} else {
+                player.stop()
+            }
+        } else {
             stopSynthesizer(immediate: immediate, completion: nil)
-		}
-        
-//        UIApplication.sharedApplication().idleTimerDisabled = false
+        }
     }
-    
+
     func stopSynthesizer(immediate: Bool = false, completion: (() -> Void)? = nil) {
         synthesizer.stopSpeaking(at: immediate ? .immediate : .word)
         completion?()
     }
 
-    func pause() {
+    @objc func pause() {
         playing = false
-        
+
         if !isTextToSpeech {
             if let player = player , player.isPlaying {
                 player.pause()
             }
         } else {
-			if synthesizer.isSpeaking {
-				synthesizer.pauseSpeaking(at: .word)
-			}
+            if synthesizer.isSpeaking {
+                synthesizer.pauseSpeaking(at: .word)
+            }
         }
-        
-//        UIApplication.sharedApplication().idleTimerDisabled = false
     }
 
-    func togglePlay() {
+    @objc func togglePlay() {
         isPlaying() ? pause() : play()
     }
 
-    func play() {
-        if book.hasAudio() {
-            guard let currentPage = FolioReader.shared.readerCenter?.currentPage else { return }
-            currentPage.webView.js("playAudio()")
+    @objc func play() {
+        if book.hasAudio {
+            guard let currentPage = self.folioReader.readerCenter?.currentPage else { return }
+            currentPage.webView?.js("playAudio()")
         } else {
-            readCurrentSentence()
+            self.readCurrentSentence()
         }
-        
-//        UIApplication.sharedApplication().idleTimerDisabled = true
     }
-    
+
     func isPlaying() -> Bool {
         return playing
     }
@@ -170,13 +191,13 @@ open class FolioReaderAudioPlayer: NSObject {
 
      Begins to play audio for the given chapter (href) and text fragment.
      If this chapter does not have audio, it will delay for a second, then attempt to play the next chapter
-    */
+     */
     func playAudio(_ href: String, fragmentID: String) {
         isTextToSpeech = false
-        
-        stop()
 
-        let smilFile = book.smilFileForHref(href)
+        self.stop()
+
+        let smilFile = book.smilFile(forHref: href)
 
         // if no smil file for this href and the same href is being requested, we've hit the end. stop playing
         if smilFile == nil && currentHref != nil && href == currentHref {
@@ -203,16 +224,16 @@ open class FolioReaderAudioPlayer: NSObject {
         }
     }
 
-    func _autoPlayNextChapter() {
+    @objc func _autoPlayNextChapter() {
         // if user has stopped playing, dont play the next chapter
         if isPlaying() == false { return }
         playNextChapter()
     }
 
-    func playPrevChapter() {
+    @objc func playPrevChapter() {
         stopPlayerTimer()
         // Wait for "currentPage" to update, then request to play audio
-        FolioReader.shared.readerCenter?.changePageToPrevious {
+        self.folioReader.readerCenter?.changePageToPrevious {
             if self.isPlaying() {
                 self.play()
             } else {
@@ -221,10 +242,10 @@ open class FolioReaderAudioPlayer: NSObject {
         }
     }
 
-    func playNextChapter() {
+    @objc func playNextChapter() {
         stopPlayerTimer()
         // Wait for "currentPage" to update, then request to play audio
-        FolioReader.shared.readerCenter?.changePageToNext {
+        self.folioReader.readerCenter?.changePageToNext {
             if self.isPlaying() {
                 self.play()
             }
@@ -237,12 +258,13 @@ open class FolioReaderAudioPlayer: NSObject {
 
      Once an audio fragment begins playing, the audio clip will continue playing until the player timer detects
      the audio is out of the fragment timeframe.
-    */
-    @discardableResult fileprivate func _playFragment(_ smil: FRSmilElement!) -> Bool {
+     */
+    @discardableResult fileprivate func _playFragment(_ smil: FRSmilElement?) -> Bool {
 
-        if smil == nil {
+        guard let smil = smil else {
+            // FIXME: What about the log that the library prints in the console? shouldn’t we disable it? use another library for that or some compiler flags?
             print("no more parallel audio to play")
-            stop()
+            self.stop()
             return false
         }
 
@@ -259,18 +281,18 @@ open class FolioReaderAudioPlayer: NSObject {
 
             let fileURL = currentSmilFile.resource.basePath() + ("/"+audioFile!)
             let audioData = try? Data(contentsOf: URL(fileURLWithPath: fileURL))
-            
+
             do {
-            
+
                 player = try AVAudioPlayer(data: audioData!)
-                
+
                 guard let player = player else { return false }
-                
-                setRate(FolioReader.currentAudioRate)
+
+                setRate(self.folioReader.currentAudioRate)
                 player.enableRate = true
                 player.prepareToPlay()
                 player.delegate = self
-                
+
                 updateNowPlayingInfo()
             } catch {
                 print("could not read audio file:", audioFile ?? "nil")
@@ -293,7 +315,7 @@ open class FolioReaderAudioPlayer: NSObject {
         // get the fragment ID so we can "mark" it in the webview
         let textParts = textFragment!.components(separatedBy: "#")
         let fragmentID = textParts[1];
-        FolioReader.shared.readerCenter?.audioMark(href: currentHref, fragmentID: fragmentID)
+        self.folioReader.readerCenter?.audioMark(href: currentHref, fragmentID: fragmentID)
 
         return true
     }
@@ -302,89 +324,93 @@ open class FolioReaderAudioPlayer: NSObject {
      Next Audio Fragment
 
      Gets the next audio fragment in the current smil file, or moves on to the next smil file
-    */
-    fileprivate func nextAudioFragment() -> FRSmilElement! {
+     */
+    fileprivate func nextAudioFragment() -> FRSmilElement? {
 
-        let smilFile = book.smilFileForHref(currentHref)
-
-        if smilFile == nil { return nil }
-
-        let smil = currentFragment == nil ? smilFile?.parallelAudioForFragment(nil) : smilFile?.nextParallelAudioForFragment(currentFragment)
-
-        if smil != nil {
-            currentFragment = smil?.textElement().attributes["src"]
-            return smil
-        }
-
-        currentHref = book.spine.nextChapter(currentHref)!.href
-        currentFragment = nil
-        currentSmilFile = smilFile
-
-        if currentHref == nil {
+        guard let smilFile = book.smilFile(forHref: currentHref) else {
             return nil
         }
 
-        return nextAudioFragment()
+        let smil = (self.currentFragment == nil ? smilFile.parallelAudioForFragment(nil) : smilFile.nextParallelAudioForFragment(currentFragment))
+
+        if (smil != nil) {
+            self.currentFragment = smil?.textElement().attributes["src"]
+            return smil
+        }
+
+        self.currentHref = self.book.spine.nextChapter(currentHref)?.href
+        self.currentFragment = nil
+        self.currentSmilFile = smilFile
+
+        guard (self.currentHref != nil) else {
+            return nil
+        }
+
+        return self.nextAudioFragment()
     }
-    
+
     func playText(_ href: String, text: String) {
         isTextToSpeech = true
         playing = true
         currentHref = href
-        
+
         if synthesizer == nil {
             synthesizer = AVSpeechSynthesizer()
             synthesizer.delegate = self
-            setRate(FolioReader.currentAudioRate)
+            setRate(self.folioReader.currentAudioRate)
         }
-        
+
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = utteranceRate
-        utterance.voice = AVSpeechSynthesisVoice(language: book.metadata.language)
-        
+        utterance.voice = AVSpeechSynthesisVoice(language: self.book.metadata.language)
+
         if synthesizer.isSpeaking {
             stopSynthesizer()
         }
         synthesizer.speak(utterance)
-        
+
         updateNowPlayingInfo()
     }
-    
-    // MARK: TTS Sentence
-    
-    func speakSentence() {
-		guard let
-			readerCenter = FolioReader.shared.readerCenter,
-			let currentPage = readerCenter.currentPage else {
-				return
-		}
 
-        let sentence = currentPage.webView.js("getSentenceWithIndex('\(book.playbackActiveClass())')")
-        
-        if sentence != nil {
-            let chapter = readerCenter.getCurrentChapter()
-            let href = chapter != nil ? chapter!.href : "";
-            playText(href!, text: sentence!)
-        } else {
-            if readerCenter.isLastPage() {
-                stop()
+    // MARK: TTS Sentence
+
+    func speakSentence() {
+        guard
+            let readerCenter = self.folioReader.readerCenter,
+            let currentPage = readerCenter.currentPage else {
+                return
+        }
+
+        let playbackActiveClass = book.playbackActiveClass
+        guard let sentence = currentPage.webView?.js("getSentenceWithIndex('\(playbackActiveClass)')") else {
+            if (readerCenter.isLastPage() == true) {
+                self.stop()
             } else {
                 readerCenter.changePageToNext()
             }
+
+            return
         }
+
+        guard let href = readerCenter.getCurrentChapter()?.href else {
+            return
+        }
+
+        // TODO QUESTION: The previous code made it possible to call `playText` with the parameter `href` being an empty string. Was that valid? should this logic be kept?
+        self.playText(href, text: sentence)
     }
-    
+
     func readCurrentSentence() {
         guard synthesizer != nil else { return speakSentence() }
-        
+
         if synthesizer.isPaused {
             playing = true
             synthesizer.continueSpeaking()
         } else {
             if synthesizer.isSpeaking {
                 stopSynthesizer(immediate: false, completion: {
-                    if let currentPage = FolioReader.shared.readerCenter?.currentPage {
-                        currentPage.webView.js("resetCurrentSentenceIndex()")
+                    if let currentPage = self.folioReader.readerCenter?.currentPage {
+                        currentPage.webView?.js("resetCurrentSentenceIndex()")
                     }
                     self.speakSentence()
                 })
@@ -393,13 +419,13 @@ open class FolioReaderAudioPlayer: NSObject {
             }
         }
     }
-    
+
     // MARK: - Audio timing events
 
     fileprivate func startPlayerTimer() {
         // we must add the timer in this mode in order for it to continue working even when the user is scrolling a webview
         playingTimer = Timer(timeInterval: 0.01, target: self, selector: #selector(playerTimerObserver), userInfo: nil, repeats: true)
-        RunLoop.current.add(playingTimer, forMode: RunLoopMode.commonModes)
+        RunLoop.current.add(playingTimer, forMode: RunLoop.Mode.common)
     }
 
     fileprivate func stopPlayerTimer() {
@@ -409,98 +435,115 @@ open class FolioReaderAudioPlayer: NSObject {
         }
     }
 
-    func playerTimerObserver() {
+    @objc func playerTimerObserver() {
         guard let player = player else { return }
-        
+
         if currentEndTime != nil && currentEndTime > 0 && player.currentTime > currentEndTime {
-            _playFragment(nextAudioFragment())
+            _playFragment(self.nextAudioFragment())
         }
     }
-    
+
     // MARK: - Now Playing Info and Controls
-    
+
     /**
      Update Now Playing info
-     
+
      Gets the book and audio information and updates on Now Playing Center
      */
     func updateNowPlayingInfo() {
         var songInfo = [String: AnyObject]()
-        
+
         // Get book Artwork
-        if let coverImage = book.coverImage, let artwork = UIImage(contentsOfFile: coverImage.fullHref) {
+        if let coverImage = self.book.coverImage, let artwork = UIImage(contentsOfFile: coverImage.fullHref) {
             let albumArt = MPMediaItemArtwork(image: artwork)
             songInfo[MPMediaItemPropertyArtwork] = albumArt
         }
-        
+
         // Get book title
-        if let title = book.title() {
+        if let title = self.book.title {
             songInfo[MPMediaItemPropertyAlbumTitle] = title as AnyObject?
         }
-        
+
         // Get chapter name
         if let chapter = getCurrentChapterName() {
             songInfo[MPMediaItemPropertyTitle] = chapter as AnyObject?
         }
-        
+
         // Get author name
-        if let author = book.metadata.creators.first {
+        if let author = self.book.metadata.creators.first {
             songInfo[MPMediaItemPropertyArtist] = author.name as AnyObject?
         }
-        
+
         // Set player times
         if let player = player , !isTextToSpeech {
             songInfo[MPMediaItemPropertyPlaybackDuration] = player.duration as AnyObject?
             songInfo[MPNowPlayingInfoPropertyPlaybackRate] = player.rate as AnyObject?
             songInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime ] = player.currentTime as AnyObject?
         }
-        
+
         // Set Audio Player info
         MPNowPlayingInfoCenter.default().nowPlayingInfo = songInfo
-        
+
         registerCommandsIfNeeded()
     }
-    
+
     /**
      Get Current Chapter Name
-     
+
      This is done here and not in ReaderCenter because even though `currentHref` is accurate,
      the `currentPage` in ReaderCenter may not have updated just yet
      */
     func getCurrentChapterName() -> String? {
-        guard let chapter = FolioReader.shared.readerCenter?.getCurrentChapter() else {
+        guard let chapter = self.folioReader.readerCenter?.getCurrentChapter() else {
             return nil
         }
-        
+
         currentHref = chapter.href
-        
-        for item in book.flatTableOfContents {
+
+        for item in (self.book.flatTableOfContents ?? []) {
             if let resource = item.resource , resource.href == currentHref {
                 return item.title
             }
         }
         return nil
     }
-    
+
     /**
      Register commands if needed, check if it's registered to avoid register twice.
      */
     func registerCommandsIfNeeded() {
-        
+
         guard !registeredCommands else { return }
-        
+
         let command = MPRemoteCommandCenter.shared()
         command.previousTrackCommand.isEnabled = true
-        command.previousTrackCommand.addTarget(self, action: #selector(playPrevChapter))
+        command.previousTrackCommand.addTarget(handler: { (event) in
+            self.playPrevChapter()
+            return MPRemoteCommandHandlerStatus.success}
+        )
+
         command.nextTrackCommand.isEnabled = true
-        command.nextTrackCommand.addTarget(self, action: #selector(playNextChapter))
+        command.nextTrackCommand.addTarget(handler: { (event) in
+            self.playNextChapter()
+            return MPRemoteCommandHandlerStatus.success}
+        )
+
         command.pauseCommand.isEnabled = true
-        command.pauseCommand.addTarget(self, action: #selector(pause))
+        command.pauseCommand.addTarget(handler: { (event) in
+            self.pause()
+            return MPRemoteCommandHandlerStatus.success}
+        )
+
         command.playCommand.isEnabled = true
-        command.playCommand.addTarget(self, action: #selector(play))
+        command.playCommand.addTarget(handler: { (event) in
+            self.play()
+            return MPRemoteCommandHandlerStatus.success}
+        )
         command.togglePlayPauseCommand.isEnabled = true
-        command.togglePlayPauseCommand.addTarget(self, action: #selector(togglePlay))
-        
+        command.togglePlayPauseCommand.addTarget(handler: { (event) in
+            self.togglePlay()
+            return MPRemoteCommandHandlerStatus.success}
+        )
         registeredCommands = true
     }
 }
@@ -523,6 +566,11 @@ extension FolioReaderAudioPlayer: AVSpeechSynthesizerDelegate {
 
 extension FolioReaderAudioPlayer: AVAudioPlayerDelegate {
     public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        _playFragment(nextAudioFragment())
+        _playFragment(self.nextAudioFragment())
     }
+}
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertFromAVAudioSessionCategory(_ input: AVAudioSession.Category) -> String {
+	return input.rawValue
 }
