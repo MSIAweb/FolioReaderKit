@@ -123,9 +123,7 @@ class ScrollScrubber: NSObject, UIScrollViewDelegate {
     @objc func sliderChange(_ slider:UISlider) {
         let movePosition = (height() * CGFloat(slider.value))
         let offset = readerConfig.isDirection(CGPoint(x: 0, y: movePosition), CGPoint(x: movePosition, y: 0), CGPoint(x: 0, y: movePosition))
-      if let scrollView = scrollView() {
-        scrollView.setContentOffset(offset, animated: false)
-      }
+        scrollView()?.setContentOffset(offset, animated: false)
     }
 
     // MARK: - show / hide
