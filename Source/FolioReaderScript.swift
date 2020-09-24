@@ -11,9 +11,16 @@ import WebKit
 class FolioReaderScript: WKUserScript {
     
     init(source: String) {
-        super.init(source: source,
-                   injectionTime: .atDocumentEnd,
-                   forMainFrameOnly: true)
+        if #available(iOS 14.0, *) {
+            super.init(source: source,
+                       injectionTime: .atDocumentEnd,
+                       forMainFrameOnly: true,
+                       in: .defaultClient)
+        } else {
+            super.init(source: source,
+                       injectionTime: .atDocumentEnd,
+                       forMainFrameOnly: true)
+        }
     }
     
     static let bridgeJS: FolioReaderScript = {
